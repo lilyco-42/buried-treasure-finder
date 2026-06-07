@@ -1,70 +1,84 @@
 # Buried Treasure Finder — Minecraft Fabric Mod
 
-自动计算并高亮显示埋藏的宝藏位置。手持藏宝图时，在宝藏精确位置渲染金色信标光束。
-
-## 功能
-
-- 🗺️ 手持藏宝图时自动读取地图数据，定位红色 "×" 标记
-- 📍 在宝藏精确位置渲染**金色信标光束** — 从远处就能看到
-- 🖥️ HUD 显示宝藏坐标 (X, Z) 和距离
-- ⌨️ 按 `K` 键切换开/关 (可在"控制"设置中修改)
-- 🌐 中英文双语支持
+通过 **F3 调试 / 饼图原理** 自动检测埋藏的宝藏位置。无需藏宝图即可定位！
 
 ## 原理
 
 ### 埋藏的宝藏生成规则 (Java 版)
 
-- 生成于**沙滩**及其变种生物群系
-- 在区块内部 **X=9, Z=9** 坐标位置
-- 位于石头、砂岩、闪长岩、花岗岩、安山岩的**最高方块**上方
-- 可以替换该位置的任意方块
-- 通过沉船/海底废墟中找到的藏宝图定位
+- 生成于 **沙滩** (`minecraft:beach`) 和 **积雪沙滩** (`minecraft:snowy_beach`) 生物群系
+- 箱子**始终**在区块内部 **X=9, Z=9** 坐标位置
+- 位于石头、砂岩、闪长岩、花岗岩、安山岩的最高方块上方
+- 基岩版生成于区块 X=8, Z=8
 
-### Mod 工作原理
+### Mod 检测原理
 
-1. **Mixin 注入** `MapState.addDecoration` — 拦截客户端地图装饰数据
-2. 检测到 `minecraft:target_x` 类型（红色 "×"）时，计算世界坐标：
-   ```
-   worldX = mapState.centerX + decoration.x
-   worldZ = mapState.centerZ + decoration.z
-   ```
-3. 根据玩家手持的地图 ID 匹配对应宝藏位置
-4. 通过 `WorldRenderEvents` 在世界中渲染金色信标
-5. 通过 `HudRenderCallback` 在屏幕上显示坐标和距离
+利用类似 F3 调试屏幕（Shift+F3 饼图）的思路：
+
+1. **Mixin 注入** `WorldChunk.addBlockEntity` — 拦截客户端区块加载时的方块实体
+2. 箱子 (`ChestBlockEntity`) 被加入区块时检测：
+   - 区块内坐标是否为 `(9, 9)`？
+   - 生物群系是否为沙滩/积雪沙滩？
+3. 满足条件 → 记录宝藏精确坐标
+4. 在宝藏位置渲染**金色信标光束**
+5. HUD 显示扫描统计和最近宝藏信息
+
+```
+客户端收到区块数据 → WorldChunk.addBlockEntity(箱子)
+  → 检查: pos & 15 == (9, 9) ?
+  → 检查: Biome == beach / snowy_beach ?
+  → ✓ 记录坐标 → 渲染信标 + HUD
+```
+
+## 功能
+
+- 🗺️ **无需藏宝图** — 直接通过区块数据检测箱子
+- 📍 金色信标光束标记宝藏精确位置
+- 📊 HUD 扫描面板：渲染距离、沙滩区块数、检测到的箱子数
+- ⌨️ `K` 键开关（可在"控制"设置中修改）
+- 🌐 中英文双语
+
+## HUD 显示
+
+```
+◆ Scanner | RD:12 | Beach:3 | Chests:1
+★ Treasure (201, 58, -75) 45m
+```
+
+- `RD` — 当前渲染距离（区块数）
+- `Beach` — 渲染距离内沙滩生物群系区块数
+- `Chests` — 已检测到的宝藏箱子数
+- 第二行显示最近宝藏坐标和距离
 
 ## 安装
 
 1. 安装 [Fabric Loader](https://fabricmc.net/use/) (1.21.4+)
 2. 安装 [Fabric API](https://modrinth.com/mod/fabric-api)
-3. 将 `buried-treasure-finder-1.0.0.jar` 放入 `.minecraft/mods/` 文件夹
+3. 将 JAR 放入 `.minecraft/mods/`
 
 ## 使用
 
-1. 获得一张**藏宝图**（从沉船/海底废墟的箱子中找到）
-2. 手持藏宝图
-3. 金色信标光束会自动出现在宝藏位置
-4. 按 `K` 键可以开关此功能
-5. 走到信标位置向下挖掘即可找到宝藏！
+1. 前往沙滩生物群系附近
+2. 按 `K` 键开启（默认开启）
+3. HUD 会显示扫描状态
+4. 金色信标出现时 → 走到信标位置向下挖掘！
+5. 如果没有检测到，在沙滩区块间移动让箱子所在区块进入渲染距离
 
 ## 开发
 
 ```bash
-# 构建
 ./gradlew build
-
-# 开发测试（自动启动 Minecraft）
 ./gradlew runClient
-
-# 产物位置
-ls build/libs/buried-treasure-finder-1.0.0.jar
 ```
 
-## 版本支持
+## 技术细节
 
-| Minecraft | Mod 版本 |
-|-----------|---------|
-| 1.21.4    | 1.0.0   |
+| Mixin 目标 | 注入点 | 用途 |
+|-----------|--------|------|
+| `WorldChunk.addBlockEntity` | TAIL | 检测箱子方块实体 |
+| `WorldRenderEvents.LAST` | — | 渲染金色信标 |
+| `HudRenderCallback` | — | HUD 信息面板 |
 
 ## 许可
 
-MIT License
+MIT
