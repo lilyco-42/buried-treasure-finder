@@ -4,9 +4,11 @@ import net.fabricmc.api.ClientModInitializer;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
 import net.fabricmc.fabric.api.client.keybinding.v1.KeyBindingHelper;
 import net.fabricmc.fabric.api.client.rendering.v1.HudRenderCallback;
+import net.fabricmc.fabric.api.client.rendering.v1.WorldRenderContext;
 import net.fabricmc.fabric.api.client.rendering.v1.WorldRenderEvents;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.font.TextRenderer;
+import net.minecraft.client.gui.DrawContext;
 import net.minecraft.client.option.KeyBinding;
 import net.minecraft.client.render.*;
 import net.minecraft.client.util.InputUtil;
@@ -157,7 +159,7 @@ public class BuriedTreasureFinderMod implements ClientModInitializer {
     //  World rendering — golden beacon beam
     // ========================================================================
 
-    private static void renderBeacon(WorldRenderEvents.Last context, BlockPos pos) {
+    private static void renderBeacon(WorldRenderContext context, BlockPos pos) {
         MatrixStack matrices = context.matrixStack();
         Camera camera = context.camera();
         Vec3d camPos = camera.getPos();
