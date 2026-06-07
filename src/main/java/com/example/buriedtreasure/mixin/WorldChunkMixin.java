@@ -48,8 +48,19 @@ public abstract class WorldChunkMixin {
      * @param blockEntity the block entity being added to the chunk
      * @param ci          Mixin callback info
      */
-    @Inject(method = "addBlockEntity", at = @At("TAIL"))
+    // Try both method names — 1.21.4 yarn may map this as either
+    // addBlockEntity (legacy) or setBlockEntity (Mojang rename).
+    @Inject(method = "setBlockEntity", at = @At("TAIL"))
+    private void onSetBlockEntity(BlockEntity blockEntity, CallbackInfo ci) {
+        detectTreasure(blockEntity);
+    }
+
+    @Inject(method = "addBlockEntity", at = @At("TAIL"), require = 0)
     private void onAddBlockEntity(BlockEntity blockEntity, CallbackInfo ci) {
+        detectTreasure(blockEntity);
+    }
+
+    private void detectTreasure(BlockEntity blockEntity) {
         // ---- gate 1: only on the physical client ----
         if (FabricLoader.getInstance().getEnvironmentType() != EnvType.CLIENT) {
             return;

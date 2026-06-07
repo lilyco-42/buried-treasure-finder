@@ -6,6 +6,7 @@ import net.fabricmc.fabric.api.client.keybinding.v1.KeyBindingHelper;
 import net.fabricmc.fabric.api.client.rendering.v1.HudRenderCallback;
 import net.fabricmc.fabric.api.client.rendering.v1.WorldRenderContext;
 import net.fabricmc.fabric.api.client.rendering.v1.WorldRenderEvents;
+import net.minecraft.block.Blocks;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.font.TextRenderer;
 import net.minecraft.client.gui.DrawContext;
@@ -19,6 +20,7 @@ import net.minecraft.util.Identifier;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.ChunkPos;
 import net.minecraft.util.math.Vec3d;
+import net.minecraft.world.Heightmap;
 import net.minecraft.world.biome.Biome;
 import org.joml.Matrix4f;
 import org.lwjgl.glfw.GLFW;
@@ -127,32 +129,58 @@ public class BuriedTreasureFinderMod implements ClientModInitializer {
     // ========================================================================
 
     /**
-     * Counts how many beach-biome chunks are loaded within the player's
-     * render distance.  Mimics what the F3 pie-chart "blockEntities" or
-     * "renderedChunks" section would show — the player can use it together
-     * with the entity‑count principle to narrow down treasure location.
+     * Counts beach-biome chunks and scans for treasure chests within the
+     * player's render distance.
+     *
+     * <p>This is the primary detection method — it does NOT depend on any
+     * Mixin.  For each chunk in render distance:
+     * <ol>
+     *   <li>Check if the chunk is in a beach / snowy-beach biome.</li>
+     *   <li>If so, scan the column at chunk-relative (9, 9) for a chest
+     *       block, starting from the surface and going down.</li>
+     * </ol>
+     *
+     * <p>The {@link com.example.buriedtreasure.mixin.WorldChunkMixin} provides
+     * instant detection as a fast path, but this scanner is the reliable
+     * fallback that works regardless of how block entities are initialised.
      */
     private static void refreshStats(MinecraftClient client) {
         if (client.world == null || client.player == null) return;
         int renderDist = client.options.getViewDistance().getValue();
         ChunkPos center = client.player.getChunkPos();
-        int count = 0;
+        int beachCount = 0;
 
         for (int dx = -renderDist; dx <= renderDist; dx++) {
             for (int dz = -renderDist; dz <= renderDist; dz++) {
                 int cx = center.x + dx;
                 int cz = center.z + dz;
-                // Probe the biome at the chunk's (0,0) world position;
-                // ClientWorld.getBiome() returns the default biome for
-                // unloaded positions without forcing a load.
+
+                // Quick biome probe at the chunk origin
                 BlockPos probe = new BlockPos(cx << 4, 64, cz << 4);
                 RegistryEntry<Biome> biome = client.world.getBiome(probe);
                 if (biome.matchesId(BEACH) || biome.matchesId(SNOWY_BEACH)) {
-                    count++;
+                    beachCount++;
+
+                    // ---- treasure scan: position (9, 9) in this chunk ----
+                    int worldX = (cx << 4) + 9;
+                    int worldZ = (cz << 4) + 9;
+                    int surfaceY = client.world.getTopY(
+                            Heightmap.Type.WORLD_SURFACE, worldX, worldZ);
+
+                    // Scan downward from surface — the chest is buried,
+                    // typically 0–10 blocks below the surface in beach terrain.
+                    for (int y = surfaceY; y >= surfaceY - 15
+                            && y >= client.world.getBottomY(); y--) {
+                        BlockPos pos = new BlockPos(worldX, y, worldZ);
+                        if (client.world.getBlockState(pos).isOf(Blocks.CHEST)) {
+                            TreasureData.addTreasure(pos);
+                            break;
+                        }
+                    }
                 }
             }
         }
-        nearbyBeachChunks = count;
+        nearbyBeachChunks = beachCount;
     }
 
     // ========================================================================
