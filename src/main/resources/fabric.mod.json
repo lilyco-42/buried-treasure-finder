@@ -1,0 +1,34 @@
+{
+    "schemaVersion": 1,
+    "id": "buried-treasure",
+    "version": "${version}",
+    "name": "Buried Treasure Finder",
+    "description": "Automatically locates buried treasure when holding a treasure map. Renders a golden beacon beam at the exact treasure position.",
+    "authors": [
+        "lilyco-42"
+    ],
+    "contact": {
+        "homepage": "https://github.com/lilyco-42/buried-treasure-finder",
+        "sources": "https://github.com/lilyco-42/buried-treasure-finder"
+    },
+    "license": "MIT",
+    "icon": "assets/buried-treasure/icon.png",
+    "environment": "client",
+    "entrypoints": {
+        "client": [
+            "com.example.buriedtreasure.BuriedTreasureFinderMod"
+        ]
+    },
+    "mixins": [
+        "buried-treasure.mixins.json"
+    ],
+    "depends": {
+        "fabricloader": ">=0.16.10",
+        "minecraft": ">=1.21.4",
+        "java": ">=21",
+        "fabric-api": "*"
+    },
+    "suggests": {
+        "modmenu": "*"
+    }
+}

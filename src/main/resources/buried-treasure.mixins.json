@@ -1,0 +1,11 @@
+{
+    "required": true,
+    "package": "com.example.buriedtreasure.mixin",
+    "compatibilityLevel": "JAVA_21",
+    "client": [
+        "MapStateMixin"
+    ],
+    "injectors": {
+        "defaultRequire": 1
+    }
+}
